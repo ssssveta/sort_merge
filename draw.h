@@ -12,8 +12,6 @@
 const int SCREEN_WIDTH = 600;
 const int SCREEN_HEIGHT = 500;
 
-bool shows=false;
-
 void draw_rectangles(int *mas, int N, int start) {
 
         al_clear_to_color(al_map_rgb(0,0,0));
@@ -28,11 +26,7 @@ void draw_rectangles(int *mas, int N, int start) {
         }
         t=0;
         al_flip_display();
-        al_rest(1);
-
-        //al_destroy_display(display);
-
-
-    }
+        al_rest(0.1);
+}
 
 #endif // DRAW_H

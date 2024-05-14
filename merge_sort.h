@@ -45,8 +45,9 @@ void merge_no(int *mas,int left, int m , int right, int N  )
 
 }
 
-void merge(int *mas,int left, int m , int right, int N,int rank  )
+void merge(int *mas, int left, int m , int right, int N,int rank  )
 {
+
     draw_rectangles(mas, N, rank );
     int i;
     i=left;
@@ -87,16 +88,77 @@ void merge(int *mas,int left, int m , int right, int N,int rank  )
      draw_rectangles(mas, N,rank);
 }
 
+void merge_no(int *mas,int left, int m , int right, int N,int rank  )
+{
+
+    int i;
+    i=left;
+    int j;
+    j=m+1;
+    int t;
+    t=left;
+    int *mas_tmp=new int [N];
+    while ((i<=m) && (j<=right)){
+        if (mas[i]<=mas[j]){
+            mas_tmp[t]=mas[i];
+            t++;
+            i++;
+
+        }
+        else{
+            mas_tmp[t]=mas[j];
+            j++;
+            t++;
+
+        }
+    }
+    while (i<=m){
+        mas_tmp[t]=mas[i];
+        i++;
+        t++;
+    }
+    while (j<=right){
+        mas_tmp[t]=mas[j];
+        j++;
+        t++;
+    }
+    for (int s=left; s<=right; s++){
+        mas[s]=mas_tmp[s];
+
+    }
+
+
+}
+void merge_sort (int *mas,int left,int right, int N, int rank){
+    if (left<right){
+
+        int m;
+        m=(left+right)/2;
+        merge_sort(mas,left,m, N, rank);
+
+        merge_sort(mas, m+1,right, N, rank);
+
+        merge_no(mas, left, m , right,N, rank);
+
+    }
+
+
+
+}
+
 void merge_sort_no (int *mas,int left,int right, int N, int rank){
+
     if (left<right){
         draw_rectangles(mas, N,rank);
         int m;
         m=(left+right)/2;
-        merge_sort_no(mas,left,m, N, rank);
+        merge_sort_no(mas,left,m, N,rank);
+
         draw_rectangles(mas, N,rank);
-        merge_sort_no(mas, m+1,right, N, rank);
-        draw_rectangles(mas, N,rank);
-        merge(mas, left, m , right,N, rank);
+        merge_sort_no(mas, m+1,right, N,rank);
+
+        draw_rectangles(mas,N,rank);
+        merge(mas, left, m , right,N,rank);
         draw_rectangles(mas, N,rank);
     }
 
@@ -167,17 +229,17 @@ int * merge_mas(int *First, int Fsize, int *Second, int Ssize, int rank) {
     if (First[fi] <= Second[si]) {
       merged[mi] = First[fi];
       shows[tmp]=First[fi];
-      //draw_rectangles(shows, Msize, rank);
+      draw_rectangles(shows, Msize, rank);
       mi++; fi++;
       tmp++;
     }
     else  {
       merged[mi] = Second[si];
       shows[tmp] = Second[si];
-      //draw_rectangles(shows, Msize, rank);
+      draw_rectangles(shows, Msize, rank);
       mi++; si++;tmp++;
     }
-     //draw_rectangles(shows, Msize, rank);
+     draw_rectangles(shows, Msize, rank);
   }
   draw_rectangles(shows, Msize, rank);
 
@@ -207,103 +269,118 @@ void parallel_merge (int RANK, int rank,int size,  int N, int *global_mas){
         mas_size=N/size;
         int *mas_local=new int[mas_size];
 
+
         if (rank==RANK){
         //  maibe generate massiv
-            MPI_Bcast(&mas_size, 1, MPI_INT, RANK, MPI_COMM_WORLD);
-
-            MPI_Scatter(global_mas, mas_size, MPI_INT,mas_local,mas_size, MPI_INT, RANK, MPI_COMM_WORLD);
-
-            merge_sort_no(mas_local, 0, mas_size-1, mas_size, rank);
-
-        }
-
-        else{
-
+            int *mas_t=new int[N];
+            draw_rectangles(global_mas,N, rank);
             MPI_Bcast(&mas_size, 1, MPI_INT, RANK, MPI_COMM_WORLD);
             MPI_Scatter(global_mas, mas_size, MPI_INT,mas_local,mas_size, MPI_INT, RANK, MPI_COMM_WORLD);
-            merge_sort_no(mas_local, 0, mas_size-1, mas_size, rank);
-
-        }
-        if (rank!=0){
-            MPI_Send(&mas_size,1, MPI_INT,0, 1, MPI_COMM_WORLD) ;
-            MPI_Send(mas_local, mas_size,MPI_INT, 0, 1, MPI_COMM_WORLD);
-            //break;
-
-        }
-        if (rank==0){
-            int count;
-            MPI_Recv(&count,1,MPI_INT, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            int *mas_after_recv=new int[count];
-            MPI_Recv(mas_after_recv,count, MPI_INT, MPI_ANY_SOURCE, 1,MPI_COMM_WORLD,MPI_STATUS_IGNORE );
-            std:: cout<< "mas_local before"<<std:: endl;
-            for (int i=0; i<mas_size; i++){
-
-                std:: cout<< mas_local[i]<<std:: endl;
+            merge_sort_no(mas_local,0, mas_size-1, mas_size, rank);
+            for (int i=0;i<mas_size; i++) {
+                mas_t[i]=mas_local[i];
             }
+            for (int i=mas_size; i<N; i++){
+                 mas_t[i]=global_mas[i];
+            }
+            draw_rectangles(mas_t,N, rank);
+            delete []mas_t;
+            MPI_Barrier(MPI_COMM_WORLD);
+        }
+        else{
+            MPI_Bcast(&mas_size, 1, MPI_INT, RANK, MPI_COMM_WORLD);
+            MPI_Scatter(global_mas, mas_size, MPI_INT,mas_local,mas_size, MPI_INT, RANK, MPI_COMM_WORLD);
+            merge_sort(mas_local, 0, mas_size-1, mas_size, rank);
+            MPI_Send(&mas_size,1, MPI_INT,0, 0, MPI_COMM_WORLD) ;
+            MPI_Send(mas_local, mas_size,MPI_INT, 0, 0, MPI_COMM_WORLD);
+            std:: cout<< rank<< std:: endl;
+            MPI_Barrier(MPI_COMM_WORLD);
 
-            mas_local=merge_mas(mas_after_recv, count,mas_local,mas_size, rank) ;
-            std:: cout<< "merge_mas"<< std:: endl;
-            //for (int i=0; i<mas_size; i++){
-              //  std:: cout<< mas_local[i]<< std:: endl;
-            //}
-            mas_size=mas_size+count;
-            delete [] mas_after_recv;
+
         }
 
+       /* if (rank!=0){
+            MPI_Send(&mas_size,1, MPI_INT,0, 0, MPI_COMM_WORLD) ;
+            MPI_Send(mas_local, mas_size,MPI_INT, 0, 0, MPI_COMM_WORLD);
+            std:: cout<<"send"<< std:: endl;
+            //MPI_Send(&rank, 1,MPI_INT, 0, 1, MPI_COMM_WORLD);
 
-
-
-        //MPI_Barrier(MPI_COMM_WORLD);
+        }
         /*
         int step;
         step=1;
-        while (step<size){
-            if (rank %(2*step)==0){
-                if (rank+step<size){
-                    std:: cout<<"recv"<< std:: endl;
-                    int count;
-                    MPI_Recv(&count,1,MPI_INT, rank+step, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                    int *mas_after_recv=new int[count];
-                    MPI_Recv(mas_after_recv,count, MPI_INT, rank+step, 1,MPI_COMM_WORLD,MPI_STATUS_IGNORE );
-                    std:: cout<< "mas_local before"<<std:: endl;
-                    for (int i=0; i<mas_size; i++){
+               while (step<size){
+                   if (rank %(2*step)==0){
+                       if (rank+step<size){
+                           std:: cout<<"recv"<< std:: endl;
+                           int count;
+                           MPI_Recv(&count,1,MPI_INT, rank+step, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                           int *mas_after_recv=new int[count];
+                           MPI_Recv(mas_after_recv,count, MPI_INT, rank+step, 1,MPI_COMM_WORLD,MPI_STATUS_IGNORE );
+                           std:: cout<< "mas_local before"<<std:: endl;
+                           if (rank!=0){
+                               MPI_Send(mas_a)
+                               mas_local=merge_mas_no(mas_after_recv, count,mas_local,mas_size, rank) ;
+                           }
+                           else{
+                               mas_local=merge_mas(mas_after_recv, count,mas_local,mas_size, rank) ;
+                               std:: cout<< "merge_mas"<< std:: endl;
+                           }
+                           mas_size=mas_size+count;
+                           delete [] mas_after_recv;
+                       }
 
-                        std:: cout<< mas_local[i]<<std:: endl;
-                    }
-                    if (rank!=0){
-                        mas_local=merge_mas_no(mas_after_recv, count,mas_local,mas_size, rank) ;
-                    }
-                    else{
-                        mas_local=merge_mas(mas_after_recv, count,mas_local,mas_size, rank) ;
-                        std:: cout<< "merge_mas"<< std:: endl;
-                    }
-                    mas_size=mas_size+count;
-                    delete [] mas_after_recv;
-                }
+                   }
+                       else{
+                           std:: cout<<"send"<< std:: endl;
+                           int next;
+                           next=rank-step;
+                               MPI_Send(&mas_size,1, MPI_INT,next, 1, MPI_COMM_WORLD) ;
+                               MPI_Send(mas_local, mas_size,MPI_INT, next, 1, MPI_COMM_WORLD);
+                           break;
 
-            }
-                else{
-                    std:: cout<<"send"<< std:: endl;
-                    int next;
-                    next=rank-step;
-                        MPI_Send(&mas_size,1, MPI_INT,next, 1, MPI_COMM_WORLD) ;
-                        MPI_Send(mas_local, mas_size,MPI_INT, next, 1, MPI_COMM_WORLD);
-                    break;
+                       }
+                   step=step*2;
+               }
 
-                }
-            step=step*2;
-        }
-*/
+    */
+
+
+
         if (rank==0){
-            for (int i=0; i<mas_size; i++){
-                std:: cout<<"RESULT"<< std:: endl;
-                std:: cout<< mas_local[i]<< std:: endl;
-            }
-            draw_rectangles(mas_local, mas_size, rank);
-       }
-       sleep(5);
-       delete []mas_local;
+
+            int count;
+            for (int i=1; i<size; i++){
+                MPI_Recv(&count,1,MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            //MPI_Recv(&r,1,MPI_INT, MPI_ANY_SOURCE, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                int *mas_after_recv=new int[count];
+                std:: cout<<"rec"<<std:: endl;
+                MPI_Recv(mas_after_recv,count, MPI_INT, i, 0,MPI_COMM_WORLD, MPI_STATUS_IGNORE );
+                mas_local=merge_mas(mas_local,mas_size,mas_after_recv, count, rank);
+                //std:: cout<<"nerge"<< std:: endl;;
+                mas_size=mas_size+count;
+                delete [] mas_after_recv;
+                //for (int i=0; i< N; i++){
+                  //     std:: cout<<"agter merge"<< std:: endl;
+                    //    std:: cout<< mas_local[i]<< std:: endl;
+                //}
 
 
     }
+
+        }
+
+        if (rank==0){
+            for (int i=0; i< N; i++){
+                std:: cout<<"RESULT"<< std:: endl;
+                std:: cout<< mas_local[i]<< std:: endl;
+            }
+        draw_rectangles(mas_local, N, rank);
+
+       }
+       MPI_Finalize();
+       delete []mas_local;
+
+
+}
 #endif // MERGE_SORT_H
