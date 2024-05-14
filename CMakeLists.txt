@@ -18,8 +18,8 @@ find_package(MPI REQUIRED)
 
 add_executable(untitled1
   main.cpp
-  quick_sort.h
-  merge_sort.h
+  draw_merge.h
+  parallel_merge.h
   draw.h
 )
 
